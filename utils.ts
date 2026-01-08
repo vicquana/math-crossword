@@ -3,22 +3,31 @@ import { GridCell, CellType, Difficulty } from './types';
 
 export const generateId = () => Math.random().toString(36).substr(2, 9);
 
+let lastPuzzleIndex: number | null = null;
+
+const createEmptyGrid = (size: number) =>
+  Array(size)
+    .fill(null)
+    .map((_, r) =>
+      Array(size)
+        .fill(null)
+        .map((__, c) => ({
+          id: generateId(),
+          type: 'empty',
+          value: '',
+          userInput: '',
+          isStatic: false,
+          row: r,
+          col: c,
+        }))
+    );
+
 /**
  * Creates a hard 9x9 puzzle template with double digits and 'x' operator.
  */
-export const createPuzzle = (difficulty: Difficulty = 'hard'): GridCell[][] => {
+const createHardPuzzle = (): GridCell[][] => {
   const size = 9;
-  const grid: GridCell[][] = Array(size).fill(null).map((_, r) =>
-    Array(size).fill(null).map((_, c) => ({
-      id: generateId(),
-      type: 'empty',
-      value: '',
-      userInput: '',
-      isStatic: false,
-      row: r,
-      col: c,
-    }))
-  );
+  const grid = createEmptyGrid(size);
 
   // We define a hardcoded 9x9 structure with double digits.
   // Using 'x' for multiplication.
@@ -137,6 +146,61 @@ export const createPuzzle = (difficulty: Difficulty = 'hard'): GridCell[][] => {
   fillCell(grid, 8, 4, 'result', '45', true);
 
   return grid;
+};
+
+const createQuickPuzzle = (): GridCell[][] => {
+  const size = 9;
+  const grid = createEmptyGrid(size);
+
+  // R0: 8 + 7 = 15
+  fillCell(grid, 0, 0, 'number', '8', true);
+  fillCell(grid, 0, 1, 'operator', '+', true);
+  fillCell(grid, 0, 2, 'number', '7', false);
+  fillCell(grid, 0, 3, 'equals', '=', true);
+  fillCell(grid, 0, 4, 'result', '15', true);
+
+  // R2: 6 x 4 = 24
+  fillCell(grid, 2, 0, 'number', '6', true);
+  fillCell(grid, 2, 1, 'operator', 'x', true);
+  fillCell(grid, 2, 2, 'number', '4', false);
+  fillCell(grid, 2, 3, 'equals', '=', true);
+  fillCell(grid, 2, 4, 'result', '24', true);
+
+  // R4: 30 - 18 = 12
+  fillCell(grid, 4, 0, 'number', '30', true);
+  fillCell(grid, 4, 1, 'operator', '-', true);
+  fillCell(grid, 4, 2, 'number', '18', false);
+  fillCell(grid, 4, 3, 'equals', '=', true);
+  fillCell(grid, 4, 4, 'result', '12', true);
+
+  // R6: 9 + 11 = 20
+  fillCell(grid, 6, 0, 'number', '9', true);
+  fillCell(grid, 6, 1, 'operator', '+', true);
+  fillCell(grid, 6, 2, 'number', '11', false);
+  fillCell(grid, 6, 3, 'equals', '=', true);
+  fillCell(grid, 6, 4, 'result', '20', true);
+
+  // R8: 15 / 3 = 5
+  fillCell(grid, 8, 0, 'number', '15', false);
+  fillCell(grid, 8, 1, 'operator', '/', true);
+  fillCell(grid, 8, 2, 'number', '3', true);
+  fillCell(grid, 8, 3, 'equals', '=', true);
+  fillCell(grid, 8, 4, 'result', '5', true);
+
+  return grid;
+};
+
+export const createPuzzle = (difficulty: Difficulty = 'hard'): GridCell[][] => {
+  const puzzles = [createHardPuzzle, createQuickPuzzle];
+  let selectedIndex = Math.floor(Math.random() * puzzles.length);
+
+  if (puzzles.length > 1 && selectedIndex === lastPuzzleIndex) {
+    selectedIndex = (selectedIndex + 1) % puzzles.length;
+  }
+
+  lastPuzzleIndex = selectedIndex;
+
+  return puzzles[selectedIndex]();
 };
 
 const fillCell = (grid: GridCell[][], r: number, c: number, type: CellType, value: string, isStatic: boolean) => {
