@@ -3,7 +3,11 @@ import { GridCell, CellType, Difficulty } from './types';
 
 export const generateId = () => Math.random().toString(36).substr(2, 9);
 
-let lastPuzzleIndex: number | null = null;
+const randomInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const pickRandom = <T>(values: T[]) =>
+  values[Math.floor(Math.random() * values.length)];
 
 const createEmptyGrid = (size: number) =>
   Array(size)
@@ -22,185 +26,63 @@ const createEmptyGrid = (size: number) =>
         }))
     );
 
-/**
- * Creates a hard 9x9 puzzle template with double digits and 'x' operator.
- */
-const createHardPuzzle = (): GridCell[][] => {
-  const size = 9;
-  const grid = createEmptyGrid(size);
+const generateEquation = (difficulty: Difficulty) => {
+  const ranges =
+    difficulty === 'hard'
+      ? { min: 10, max: 99 }
+      : { min: 1, max: 20 };
+  const operators = difficulty === 'hard' ? ['+', '-', 'x', '/'] : ['+', '-', 'x'];
+  const operator = pickRandom(operators);
 
-  // We define a hardcoded 9x9 structure with double digits.
-  // Using 'x' for multiplication.
-  
-  // R0: 15 x 3 = 45
-  fillCell(grid, 0, 0, 'number', '15', true);
-  fillCell(grid, 0, 1, 'operator', 'x', true);
-  fillCell(grid, 0, 2, 'number', '3', false);
-  fillCell(grid, 0, 3, 'equals', '=', true);
-  fillCell(grid, 0, 4, 'result', '45', true);
+  if (operator === '/') {
+    const divisor = randomInt(2, 12);
+    const result = randomInt(2, 15);
+    const dividend = divisor * result;
+    return { num1: dividend, num2: divisor, operator, result };
+  }
 
-  // C0: 15 + 21 = 36
-  fillCell(grid, 1, 0, 'operator', '+', true);
-  fillCell(grid, 2, 0, 'number', '21', false);
-  fillCell(grid, 3, 0, 'equals', '=', true);
-  fillCell(grid, 4, 0, 'result', '36', true);
+  const num1 = randomInt(ranges.min, ranges.max);
+  const num2 = randomInt(ranges.min, ranges.max);
 
-  // R2: 21 - 11 = 10
-  fillCell(grid, 2, 1, 'operator', '-', true);
-  fillCell(grid, 2, 2, 'number', '11', false);
-  fillCell(grid, 2, 3, 'equals', '=', true);
-  fillCell(grid, 2, 4, 'result', '10', true);
+  if (operator === '-') {
+    const large = Math.max(num1, num2);
+    const small = Math.min(num1, num2);
+    return { num1: large, num2: small, operator, result: large - small };
+  }
 
-  // C2: 3 + 11 = 14
-  fillCell(grid, 1, 2, 'operator', '+', true);
-  fillCell(grid, 3, 2, 'equals', '=', true);
-  fillCell(grid, 4, 2, 'result', '14', true);
+  if (operator === 'x') {
+    const num1Adjusted = randomInt(2, 12);
+    const num2Adjusted = randomInt(2, 12);
+    return {
+      num1: num1Adjusted,
+      num2: num2Adjusted,
+      operator,
+      result: num1Adjusted * num2Adjusted,
+    };
+  }
 
-  // R4: 36 - 14 = 22
-  fillCell(grid, 4, 1, 'operator', '-', true);
-  fillCell(grid, 4, 3, 'equals', '=', true);
-  fillCell(grid, 4, 4, 'result', '22', true);
-
-  // Branching out further
-  // C4: 45 / 5 = 9
-  fillCell(grid, 1, 4, 'operator', '/', true);
-  fillCell(grid, 2, 4, 'result', '10', true); // Existing
-  fillCell(grid, 3, 4, 'equals', '=', true);
-  fillCell(grid, 4, 4, 'result', '22', false); // This is now user input for equation: 45 / ? = ? (Wait, 45/5=9)
-  // Let's re-adjust C4 logic: 45 - 23 = 22
-  fillCell(grid, 1, 4, 'operator', '-', true);
-  fillCell(grid, 2, 4, 'result', '10', true); // Keep consistent
-  // R2: 21 - 11 = 10 (C4 crosses at R2,C4 which is 10)
-  // C4: 45 - 35 = 10? No.
-  // Let's stick to valid math:
-  // C4: 45 (R0) 
-  // R1,C4: -
-  // R2,C4: 35
-  // R3,C4: =
-  // R4,C4: 10
-  fillCell(grid, 1, 4, 'operator', '-', true);
-  fillCell(grid, 2, 4, 'number', '35', false);
-  fillCell(grid, 3, 4, 'equals', '=', true);
-  fillCell(grid, 4, 4, 'result', '10', true);
-  
-  // Now R4: 36 (C0) - 14 (C2) = 22 (New R4,C4 needs to be consistent)
-  // Re-adjusting R4 to: 36 - 14 = 22. 
-  // Wait, R4,C4 was 10 from the C4 vertical.
-  // Let's make R4: 36 - 26 = 10.
-  fillCell(grid, 4, 2, 'number', '26', false);
-  // Now C2 needs to be: 3 + 26 = 29
-  fillCell(grid, 4, 2, 'number', '26', false);
-  fillCell(grid, 3, 2, 'equals', '=', true);
-  fillCell(grid, 4, 2, 'result', '29', true); 
-  // Wait, R4,C0 is 36. R4,C1 is -. R4,C2 is 26. R4,C3 is =. R4,C4 is 10. (36-26=10) - Correct.
-  // C2: 3 + 26 = 29. - Correct.
-  fillCell(grid, 4, 0, 'result', '36', true);
-  fillCell(grid, 4, 1, 'operator', '-', true);
-  fillCell(grid, 4, 2, 'number', '26', false);
-  fillCell(grid, 4, 3, 'equals', '=', true);
-  fillCell(grid, 4, 4, 'result', '10', true);
-
-  // New section
-  // R6: 50 / 2 = 25
-  fillCell(grid, 6, 0, 'number', '50', true);
-  fillCell(grid, 6, 1, 'operator', '/', true);
-  fillCell(grid, 6, 2, 'number', '2', false);
-  fillCell(grid, 6, 3, 'equals', '=', true);
-  fillCell(grid, 6, 4, 'result', '25', true);
-
-  // C0: 36 + 14 = 50
-  fillCell(grid, 5, 0, 'operator', '+', true);
-  // R4,C0 is 36.
-  fillCell(grid, 6, 0, 'number', '50', true);
-  
-  // C2: 29 x 2 = 58? No. 29 - 27 = 2.
-  fillCell(grid, 5, 2, 'operator', '-', true);
-  fillCell(grid, 6, 2, 'number', '27', false);
-  fillCell(grid, 7, 2, 'equals', '=', true);
-  fillCell(grid, 8, 2, 'result', '2', true);
-
-  // R6 re-update: 50 - 23 = 27
-  fillCell(grid, 6, 1, 'operator', '-', true);
-  fillCell(grid, 6, 2, 'number', '23', false);
-  fillCell(grid, 6, 3, 'equals', '=', true);
-  fillCell(grid, 6, 4, 'result', '27', true);
-
-  // Let's add more double digits in a fresh block
-  // R0, C6: 12 x 4 = 48
-  fillCell(grid, 0, 6, 'number', '12', true);
-  fillCell(grid, 0, 7, 'operator', 'x', true);
-  fillCell(grid, 0, 8, 'number', '4', false);
-  fillCell(grid, 1, 8, 'equals', '=', true); // Vertical
-  fillCell(grid, 2, 8, 'result', '48', true); // Vertical target
-  // Re-adjust:
-  fillCell(grid, 0, 6, 'number', '12', true);
-  fillCell(grid, 0, 7, 'operator', 'x', true);
-  fillCell(grid, 0, 8, 'number', '4', false);
-  fillCell(grid, 0, 9, 'equals', '=', true); // Wait grid is 9x9, max index 8
-  
-  // Let's do R8: 10 + 35 = 45
-  fillCell(grid, 8, 0, 'number', '10', false);
-  fillCell(grid, 8, 1, 'operator', '+', true);
-  fillCell(grid, 8, 2, 'number', '35', false);
-  fillCell(grid, 8, 3, 'equals', '=', true);
-  fillCell(grid, 8, 4, 'result', '45', true);
-
-  return grid;
+  return { num1, num2, operator, result: num1 + num2 };
 };
 
-const createQuickPuzzle = (): GridCell[][] => {
+const generatePuzzle = (difficulty: Difficulty): GridCell[][] => {
   const size = 9;
   const grid = createEmptyGrid(size);
+  const rows = [0, 2, 4, 6, 8];
 
-  // R0: 8 + 7 = 15
-  fillCell(grid, 0, 0, 'number', '8', true);
-  fillCell(grid, 0, 1, 'operator', '+', true);
-  fillCell(grid, 0, 2, 'number', '7', false);
-  fillCell(grid, 0, 3, 'equals', '=', true);
-  fillCell(grid, 0, 4, 'result', '15', true);
-
-  // R2: 6 x 4 = 24
-  fillCell(grid, 2, 0, 'number', '6', true);
-  fillCell(grid, 2, 1, 'operator', 'x', true);
-  fillCell(grid, 2, 2, 'number', '4', false);
-  fillCell(grid, 2, 3, 'equals', '=', true);
-  fillCell(grid, 2, 4, 'result', '24', true);
-
-  // R4: 30 - 18 = 12
-  fillCell(grid, 4, 0, 'number', '30', true);
-  fillCell(grid, 4, 1, 'operator', '-', true);
-  fillCell(grid, 4, 2, 'number', '18', false);
-  fillCell(grid, 4, 3, 'equals', '=', true);
-  fillCell(grid, 4, 4, 'result', '12', true);
-
-  // R6: 9 + 11 = 20
-  fillCell(grid, 6, 0, 'number', '9', true);
-  fillCell(grid, 6, 1, 'operator', '+', true);
-  fillCell(grid, 6, 2, 'number', '11', false);
-  fillCell(grid, 6, 3, 'equals', '=', true);
-  fillCell(grid, 6, 4, 'result', '20', true);
-
-  // R8: 15 / 3 = 5
-  fillCell(grid, 8, 0, 'number', '15', false);
-  fillCell(grid, 8, 1, 'operator', '/', true);
-  fillCell(grid, 8, 2, 'number', '3', true);
-  fillCell(grid, 8, 3, 'equals', '=', true);
-  fillCell(grid, 8, 4, 'result', '5', true);
+  rows.forEach((rowIndex) => {
+    const equation = generateEquation(difficulty);
+    fillCell(grid, rowIndex, 0, 'number', String(equation.num1), true);
+    fillCell(grid, rowIndex, 1, 'operator', equation.operator, true);
+    fillCell(grid, rowIndex, 2, 'number', String(equation.num2), false);
+    fillCell(grid, rowIndex, 3, 'equals', '=', true);
+    fillCell(grid, rowIndex, 4, 'result', String(equation.result), true);
+  });
 
   return grid;
 };
 
 export const createPuzzle = (difficulty: Difficulty = 'hard'): GridCell[][] => {
-  const puzzles = [createHardPuzzle, createQuickPuzzle];
-  let selectedIndex = Math.floor(Math.random() * puzzles.length);
-
-  if (puzzles.length > 1 && selectedIndex === lastPuzzleIndex) {
-    selectedIndex = (selectedIndex + 1) % puzzles.length;
-  }
-
-  lastPuzzleIndex = selectedIndex;
-
-  return puzzles[selectedIndex]();
+  return generatePuzzle(difficulty);
 };
 
 const fillCell = (grid: GridCell[][], r: number, c: number, type: CellType, value: string, isStatic: boolean) => {
